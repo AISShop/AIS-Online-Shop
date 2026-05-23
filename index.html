@@ -30,9 +30,9 @@
   header{background:var(--green);color:#fff;position:sticky;top:0;z-index:40;box-shadow:0 6px 20px rgba(10,40,25,.18)}
   .nav{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:34px;padding:16px 20px}
   .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:26px;letter-spacing:.5px;cursor:pointer}
-  .logo .swoosh{width:46px;height:30px}
-  nav.menu{display:flex;gap:26px;font-weight:500;font-size:15px}
-  nav.menu a{opacity:.92;transition:.2s;padding:4px 0;cursor:pointer}
+  nav.menu{display:flex;gap:26px;font-weight:500;font-size:15px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav.menu::-webkit-scrollbar{display:none}
+  nav.menu a{opacity:.92;transition:.2s;padding:4px 0;cursor:pointer;white-space:nowrap;flex-shrink:0}
   nav.menu a:hover{opacity:1;color:var(--lime)}
   .nav .tools{margin-left:auto;display:flex;align-items:center;gap:14px}
   .cart-btn{position:relative;background:rgba(255,255,255,.12);border:none;color:#fff;width:44px;height:44px;border-radius:12px;font-size:19px;display:grid;place-items:center;transition:.2s}
@@ -48,10 +48,11 @@
 
   /* ad slideshow */
   .slides{position:relative;width:100%;max-width:1240px;margin:0 auto;z-index:1}
-  .slides .track{position:relative;aspect-ratio:1240/360;overflow:hidden}
-  .slides .slide{position:absolute;inset:0;opacity:0;transition:opacity .6s;display:flex;align-items:flex-end}
+  .slides .track{position:relative;aspect-ratio:1240/360;overflow:hidden;background:#0a3d26}
+  .slides .slide{position:absolute;inset:0;opacity:0;transition:opacity .6s}
   .slides .slide.on{opacity:1}
-  .slides .slide img,.slides .slide picture{width:100%;height:100%;object-fit:cover;display:block}
+  .slides .slide picture{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .slides .slide img{width:100%;height:100%;object-fit:cover;display:block}
   .slides .cap{position:absolute;left:0;right:0;bottom:0;padding:24px 28px;font-size:18px;font-weight:600;
     background:linear-gradient(transparent,rgba(8,30,18,.78));color:#fff}
   .slides .dots{position:absolute;bottom:12px;left:0;right:0;display:flex;gap:8px;justify-content:center;z-index:3}
@@ -79,7 +80,7 @@
     .hero .wrap{padding:40px 18px 44px}
     .util .wrap{gap:12px;padding:8px 14px;flex-wrap:wrap}
   }
-  @media(max-width:560px){.grid{grid-template-columns:1fr 1fr;gap:12px}.nav{gap:10px;padding:14px}nav.menu{display:none}.logo{font-size:22px}}
+  @media(max-width:560px){.grid{grid-template-columns:1fr 1fr;gap:12px}.nav{gap:10px;padding:14px}.logo{font-size:22px}}
   @media(max-width:380px){.grid{grid-template-columns:1fr}}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:.2s;position:relative}
@@ -109,8 +110,7 @@
   .qstep span{min-width:26px;text-align:center;font-weight:600;font-size:13px}
   @media(max-width:560px){.card-actions{flex-direction:column}.qstep{align-self:flex-start}.card-actions .add{width:100%}}
 
-  footer{background:var(--green-2);color:#a7c4b2;padding:30px 20px;text-align:center;font-size:13px}
-  footer a{color:var(--lime);cursor:pointer}
+
 
   /* cart drawer */
   .overlay{position:fixed;inset:0;background:rgba(12,30,20,.45);z-index:60;opacity:0;pointer-events:none;transition:.25s}
@@ -214,6 +214,12 @@
   .gate .gbtn{width:100%;padding:13px;background:var(--green);color:#fff;border:none;border-radius:11px;font-weight:600;font-size:15px}
   .gate .err{color:var(--sale);font-size:13px;margin-bottom:8px;min-height:18px}
 
+
+  /* footer */
+  #siteFooter{background:var(--green-2);color:#a7c4b2;padding:22px 20px;text-align:center;font-size:13px}
+  .footer-inner{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+
+
   /* ===== admin responsive ===== */
   @media(max-width:860px){
     .admin-wrap{grid-template-columns:1fr}
@@ -236,6 +242,68 @@
     .modal{border-radius:14px}
   }
 </style>
+<script type="module">
+/* ============================================================
+   AIS Cloud — optional Firebase Firestore sync (central data)
+   If a Firebase config is saved (localStorage 'ais_fb_config'),
+   data syncs across ALL devices in realtime. Otherwise the app
+   falls back to local-only IndexedDB storage.
+============================================================ */
+window.AISCloud = {
+  ready:false, enabled:false, _db:null, _docRef:null, _onRemote:null, _saving:false,
+  getConfig(){
+    try{ const c=localStorage.getItem('ais_fb_config'); return c?JSON.parse(c):null; }catch{ return null; }
+  },
+  saveConfig(obj){ localStorage.setItem('ais_fb_config', JSON.stringify(obj)); },
+  clearConfig(){ localStorage.removeItem('ais_fb_config'); },
+  async connect(){
+    const cfg=this.getConfig();
+    if(!cfg||!cfg.apiKey||!cfg.projectId){ this.enabled=false; this.ready=true; return false; }
+    try{
+      const appMod=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+      const fsMod =await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const app=appMod.initializeApp(cfg);
+      const db=fsMod.getFirestore(app);
+      this._fs=fsMod; this._db=db;
+      // single shared document holds the whole store state
+      this._docRef=fsMod.doc(db,'stores','main');
+      this.enabled=true; this.ready=true;
+      return true;
+    }catch(e){ console.error('Firebase connect failed',e); this.enabled=false; this.ready=true; return false; }
+  },
+  // realtime subscription -> calls cb(stateObj) whenever cloud data changes
+  subscribe(cb){
+    if(!this.enabled||!this._docRef) return;
+    this._onRemote=cb;
+    this._fs.onSnapshot(this._docRef,(snap)=>{
+      if(this._saving) return;            // ignore our own write echo
+      if(snap.exists()){
+        const data=snap.data();
+        if(data && data.json){ try{ cb(JSON.parse(data.json)); }catch(e){} }
+      }
+    },(err)=>console.warn('snapshot error',err));
+  },
+  async save(stateObj){
+    if(!this.enabled||!this._docRef) return false;
+    try{
+      this._saving=true;
+      await this._fs.setDoc(this._docRef,{ json:JSON.stringify(stateObj), updated:Date.now() });
+      setTimeout(()=>{ this._saving=false; },300);
+      return true;
+    }catch(e){ this._saving=false; console.error('cloud save failed',e); return false; }
+  },
+  async loadOnce(){
+    if(!this.enabled||!this._docRef) return null;
+    try{
+      const snap=await this._fs.getDoc(this._docRef);
+      if(snap.exists() && snap.data().json) return JSON.parse(snap.data().json);
+    }catch(e){ console.warn('cloud load failed',e); }
+    return null;
+  }
+};
+// Signal when the cloud layer has attempted connection
+window.AISCloudReady = window.AISCloud.connect();
+</script>
 </head>
 <body>
 
@@ -243,27 +311,29 @@
 <div id="storeView">
   <div class="util"><div class="wrap">
     <div class="left-links" id="topLinks"></div>
-    <div class="right"><span class="pill"><img src="icon.avif" alt="myAIS" width="10" height="10"></span><span id="adminLink"></span><span>🇹🇭 TH</span></div>
+    <div class="right"><span class="pill" style="padding:2px 6px;background:var(--lime)"><img src="data:image/png;base64,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" style="height:28px;width:28px;object-fit:contain;vertical-align:middle" alt="myAIS"></span><span id="adminLink"></span><span>🇹🇭 TH</span></div>
   </div></div>
 
   <header><div class="nav">
-    <div class="logo" onclick="showStore()">
-      <span class="swoosh"><svg viewBox="0 0 60 38"><path d="M2 30 C20 6 40 6 58 30" fill="none" stroke="#a7d129" stroke-width="9" stroke-linecap="round"/></svg></span>
-      <span id="brandName">AIS</span>
-    </div>
-    <nav class="menu" id="navMenu"></nav>
+        <nav class="menu" id="navMenu"></nav>
     <div class="tools">
       <button class="cart-btn" onclick="openCart()">🛒<span class="cart-count hidden" id="cartCount">0</span></button>
     </div>
   </div></header>
-
   <section class="hero" id="hero"></section>
 
   <div class="cats" id="cats"></div>
   <div class="grid" id="grid"></div>
 
-  <footer>© 2026 <span id="footName">AIS Online Store</span> — ระบบสาธิตหน้าร้านออนไลน์</footer>
+  <footer id="siteFooter">
+    <div class="footer-inner">
+      <span id="footName2">AIS Online Store</span> · อุปกรณ์เสริมและสินค้าไอที
+      <span style="opacity:.5">·</span> ผู้เข้าชม <span id="visitorCount">–</span> ครั้ง
+    </div>
+  </footer>
+
 </div>
+
 
 <!-- =================== ADMIN =================== -->
 <div id="adminView" class="hidden">
@@ -291,7 +361,10 @@
         <button data-tab="import" onclick="tab('import')">📥 นำเข้า / Template</button>
         <button data-tab="settings" onclick="tab('settings')">⚙️ ตั้งค่า</button>
       </nav>
-      <button class="exit" onclick="showStore()">← กลับหน้าร้าน</button>
+      <div style="position:absolute;bottom:20px;left:16px;right:16px;display:flex;flex-direction:column;gap:8px">
+        <button class="exit" style="position:static" onclick="showStore()">← กลับหน้าร้าน</button>
+        <button class="exit" style="position:static;background:rgba(228,0,43,.25)" onclick="doLogout()">ออกจากระบบ (Logout)</button>
+      </div>
     </aside>
     <main class="amain" id="amain"></main>
   </div>
@@ -320,6 +393,7 @@ const SETTINGS = {
   hero_show_sub:1, hero_sub:'อุปกรณ์เสริมและสินค้าไอทีคุณภาพ ราคาพิเศษ พร้อมส่งทั่วไทย สั่งง่าย แอดตะกร้าแล้วแชตกับเราได้เลย',
   // up to 5 ad banner images: {pc:dataURL, mobile:dataURL, link:'', caption:''}
   ads:[],
+  ads_fit:'cover',   // 'cover' = เต็มกรอบ (อาจตัดขอบ) | 'contain' = เห็นเต็มภาพ (ไม่ตัด)
   // ---- editable header links ----
   top_links:[
     {text:'ลูกค้าบุคคล',url:'#'},{text:'ลูกค้าองค์กร',url:'#'},{text:'เกี่ยวกับเรา',url:'#'}
@@ -330,7 +404,7 @@ const SETTINGS = {
   ],
   // ---- contact / chat channels ----
   show_admin_link:0,           // 0 = ซ่อนลิงก์เข้า admin จากหน้าลูกค้า
-  line_oa:'@aisshop',           // LINE OA id/url เช่น @aisshop หรือ https://lin.ee/xxxx
+  line_oa:'@706dgnuq', // LINE OA
   // ---- sale badge defaults (ปรับได้รายสินค้า) ----
   sale_label:'SALE',            // คำบนป้าย เช่น SALE / ส่วนลด / ลดราคา
   sale_color:'#1a9d4b',         // สีป้าย (ไม่กระพริบ) - เขียว
@@ -389,7 +463,7 @@ function messengerUrl(order_no){
 function applyTheme(){
   document.documentElement.style.setProperty('--green',SETTINGS.primary);
   document.documentElement.style.setProperty('--lime',SETTINGS.accent);
-  $('#brandName').textContent = 'AIS';
+  // brandName hidden
   const fn=$('#footName'); if(fn) fn.textContent=SETTINGS.store_name;
   document.title = SETTINGS.store_name + ' — Demo';
   renderHeaderLinks();
@@ -402,6 +476,8 @@ function renderHeaderLinks(){
   const al=$('#adminLink');
   if(al) al.innerHTML = SETTINGS.show_admin_link
     ? `<a onclick="enterAdmin()" style="cursor:pointer">เข้าสู่ระบบ (Admin)</a>` : '';
+  // footer store name
+  const fn2=$('#footName2'); if(fn2) fn2.textContent=SETTINGS.store_name||'AIS Online Store';
 }
 
 let _slideTimer=null, _slideIdx=0;
@@ -431,7 +507,7 @@ function renderHero(){
       // <picture> swaps to the mobile image automatically under 560px
       const inner=`<picture>
         <source media="(max-width:560px)" srcset="${mob}">
-        <img src="${pc}" alt="">
+        <img src="${pc}" alt="" style="object-fit:${SETTINGS.ads_fit==='contain'?'contain':'cover'}">
       </picture>${a.caption?`<div class="cap">${esc(a.caption)}</div>`:''}`;
       const cls=`slide ${i===0?'on':''}`;
       return a.link
@@ -481,7 +557,8 @@ function renderGrid(){
   g.innerHTML=list.map(p=>{
     const hasSale=p.sale&&p.sale<p.price;
     const show=hasSale?p.sale:p.price;
-    const ribbon=(p.disc&&hasSale)?`<div class="ribbon ${p.blink?'blink':''}" style="background:${saleColor(p)}"><small>${esc(saleLabel(p))}</small>${p.disc}%</div>`:'';
+    const discText = p.disc ? (p.disc_type==='amount' ? SETTINGS.currency+(Number(p.disc).toLocaleString('th-TH')) : p.disc+'%') : '';
+    const ribbon=(p.disc&&hasSale)?`<div class="ribbon ${p.blink?'blink':''}" style="background:${saleColor(p)};${p.disc_type==='amount'?'width:52px;font-size:11px;':''}"><small>${esc(saleLabel(p))}</small>${discText}</div>`:'';
     const img=p.image?`<img src="${p.image}" alt="">`:`<span class="ph">ไม่มีรูป</span>`;
     return `<div class="card">${ribbon}<div class="thumb">${img}</div>
       <div class="pbody"><div class="pname">${esc(p.name)}</div>
@@ -585,16 +662,29 @@ function showStore(){
 function enterAdmin(){
   $('#storeView').classList.add('hidden');$('#adminView').classList.remove('hidden');
   closeCart();
-  $('#gate').classList.remove('hidden');$('#adminApp').classList.add('hidden');
-  const uf=$('#user'); if(uf) uf.value=''; $('#pw').value='';$('#gateErr').textContent='';
+  // already logged in this session? skip the gate (fixes refresh -> logged out)
+  let loggedIn=false; try{ loggedIn = sessionStorage.getItem('ais_admin_in')==='1'; }catch{}
+  if(loggedIn){
+    $('#gate').classList.add('hidden');$('#adminApp').classList.remove('hidden');
+    const active=document.querySelector('.side nav button.active');
+    tab(active?active.dataset.tab:'dash');
+  } else {
+    $('#gate').classList.remove('hidden');$('#adminApp').classList.add('hidden');
+    const uf=$('#user'); if(uf) uf.value=''; $('#pw').value='';$('#gateErr').textContent='';
+  }
 }
 function doLogin(){
   const u=($('#user').value||'').trim(), pw=$('#pw').value;
   if(u===SETTINGS.admin_user && pw===SETTINGS.admin_password){
+    try{ sessionStorage.setItem('ais_admin_in','1'); }catch{}
     $('#gate').classList.add('hidden');$('#adminApp').classList.remove('hidden');
     $('#user').value='';$('#pw').value='';$('#gateErr').textContent='';
     tab('dash');
   } else $('#gateErr').textContent='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+}
+function doLogout(){
+  try{ sessionStorage.removeItem('ais_admin_in'); }catch{}
+  showStore();
 }
 
 /* ============================================================
@@ -644,6 +734,13 @@ function renderHeaderAdmin(){
         <span class="muted">${(SETTINGS.ads||[]).filter(a=>a&&(a.pc||a.mobile)).length}/5 ภาพ</span>
       </div>
       <p class="muted" style="margin-bottom:14px">อัปโหลดได้สูงสุด 5 ชุด · แต่ละชุดใส่ภาพ PC และภาพมือถือแยกกัน</p>
+      <div class="field" style="margin-bottom:16px"><label>การแสดงผลภาพ</label>
+        <select id="ads_fit" onchange="setAdsFit(this.value)">
+          <option value="cover" ${SETTINGS.ads_fit!=='contain'?'selected':''}>เต็มกรอบ (Cover) — เต็มพื้นที่ อาจตัดขอบบน-ล่าง</option>
+          <option value="contain" ${SETTINGS.ads_fit==='contain'?'selected':''}>เห็นเต็มภาพ (Contain) — เห็นทั้งภาพ ไม่ตัด มีพื้นหลัง</option>
+        </select>
+        <div class="muted" style="margin-top:6px">เลือก "เต็มกรอบ" ถ้าภาพได้สัดส่วนตามแนะนำ (PC 1240×360) · เลือก "เห็นเต็มภาพ" ถ้าไม่อยากให้ภาพถูกตัด</div>
+      </div>
       <div id="adsList">${[0,1,2,3,4].map(i=>adRow(i)).join('')}</div>
       <div class="hint" style="margin-top:14px"><b>ภาพ PC</b> แนวนอน ~1240×360px · <b>ภาพมือถือ</b> แนวตั้ง/จัตุรัส ~800×800px · ถ้าไม่ใส่ภาพมือถือ ระบบจะใช้ภาพ PC แทน · สไลด์อัตโนมัติเมื่อมีมากกว่า 1 ชุด</div>
     </div>`;
@@ -697,6 +794,7 @@ function setAdImg(i,which,input){
   r.readAsDataURL(f);
 }
 function clearAdImg(i,which){ if(SETTINGS.ads[i]){SETTINGS.ads[i][which]=''; persist();renderHero(); renderHeaderAdmin();} }
+function setAdsFit(v){ SETTINGS.ads_fit=v; persist(); renderHero(); }
 function updateAd(i,key,val){ adAt(i)[key]=val; persist();renderHero(); }
 function removeAdSet(i){ SETTINGS.ads.splice(i,1); persist();renderHero(); renderHeaderAdmin(); }
 function moveAd(i,d){
@@ -767,7 +865,7 @@ function drawProducts(){
       <td><b>${esc(p.name)}</b>${p.sku?`<br><span class="muted">${esc(p.sku)}</span>`:''}</td>
       <td>${esc(catName(p.category_id))}</td>
       <td>${sale?`<span class="old">${money(p.price)}</span><br>`:''}<span class="now">${money(sale?p.sale:p.price)}</span></td>
-      <td>${sale&&p.disc?`<span class="pct">${p.disc}%${p.blink?' ✦':''}</span>`:'-'}</td>
+      <td>${sale&&p.disc?`<span class="pct">${p.disc_type==='amount'?(SETTINGS.currency+p.disc):p.disc+'%'}${p.blink?' ✦':''}</span>`:'-'}</td>
       <td>${p.active?'<span class="tag done">แสดง</span>':'<span class="tag cancelled">ซ่อน</span>'}</td>
       <td><button class="btn alt sm" onclick="openProduct(${p.id})">แก้ไข</button> <button class="btn danger sm" onclick="delProduct(${p.id})">ลบ</button></td>
     </tr>`;
@@ -782,7 +880,14 @@ function openProduct(id){
     <div class="field"><label>หมวดหมู่</label><select id="m_cat"><option value="">— ไม่ระบุ —</option>${opts}</select></div>
     <div class="grid2"><div class="field"><label>ราคาปกติ (฿) *</label><input id="m_price" type="number" value="${p.price||0}"></div>
       <div class="field"><label>ราคาส่วนลด (฿)</label><input id="m_sale" type="number" value="${p.sale||''}" placeholder="เว้นว่าง = ไม่ลด"></div></div>
-    <div class="grid2"><div class="field"><label>% ส่วนลดบนป้าย</label><input id="m_disc" type="number" value="${p.disc||''}" placeholder="คำนวณอัตโนมัติ"></div>
+    <div class="grid2"><div class="field"><label>ส่วนลดบนป้าย</label>
+        <div style="display:flex;gap:6px">
+          <select id="m_disc_type" style="width:90px;border:1.5px solid var(--line);border-radius:8px;padding:9px 8px;font-size:13px">
+            <option value="percent" ${(p.disc_type||'percent')==='percent'?'selected':''}>% เปอร์เซ็นต์</option>
+            <option value="amount" ${p.disc_type==='amount'?'selected':''}>฿ จำนวนเงิน</option>
+          </select>
+          <input id="m_disc" type="number" value="${p.disc||''}" placeholder="เช่น 17 หรือ 300" style="flex:1;border:1.5px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13px">
+        </div></div>
       <div class="field"><label>ลำดับการแสดง</label><input id="m_sort" type="number" value="${p.sort||0}"></div></div>
     <div class="grid2">
       <div class="field"><label>คำบนป้าย (เว้นว่าง = ใช้ค่าร้าน "${esc(SETTINGS.sale_label||'SALE')}")</label><input id="m_label" value="${esc(p.label||'')}" placeholder="${esc(SETTINGS.sale_label||'SALE')}"></div>
@@ -810,7 +915,7 @@ function saveProduct(id){
   const price=Number($('#m_price').value)||0, sale=$('#m_sale').value?Number($('#m_sale').value):null;
   const data={name,sku:$('#m_sku').value.trim(),category_id:$('#m_cat').value?Number($('#m_cat').value):null,
     image:$('#m_img').value,price,sale,disc:computeDisc(price,sale,$('#m_disc').value),
-    label:$('#m_label').value.trim(), color:$('#m_color_use').checked?$('#m_color').value:'',
+    label:$('#m_label').value.trim(), color:$('#m_color_use').checked?$('#m_color').value:'', disc_type:$('#m_disc_type').value||'percent',
     sort:Number($('#m_sort').value)||0,blink:$('#m_blink').checked?1:0,active:$('#m_active').checked?1:0};
   if(id){Object.assign(PRODUCTS.find(p=>p.id===id),data);}
   else{PRODUCTS.push({id:nextProductId++,...data});}
@@ -971,14 +1076,69 @@ function renderSettings(){
     </div>
 
     <div class="panel" style="padding:24px;max-width:560px;margin-top:18px">
+      <h3 style="font-size:16px;margin-bottom:6px">☁️ ซิงก์ข้อมูลข้ามเครื่อง (Cloud Sync)</h3>
+      <div id="cloudStatus" style="margin-bottom:12px"></div>
+      <p class="muted" style="margin-bottom:12px">ทำให้ข้อมูล (สินค้า ออร์เดอร์ Ads) <b>ซิงก์ข้ามทุกเครื่องแบบเรียลไทม์</b> เช่น ลูกค้าสั่งจากมือถือ คุณเห็นในแอดมินที่เครื่องไหนก็ได้ทันที · ใช้ฟรีด้วย Firebase</p>
+      <div class="hint" style="margin-bottom:12px">
+        <b>วิธีตั้งค่า (ทำครั้งเดียว):</b><br>
+        1) ไปที่ <a href="https://console.firebase.google.com" target="_blank" class="link">console.firebase.google.com</a> → สร้างโปรเจกต์ (ฟรี)<br>
+        2) เมนู Build → Firestore Database → Create database (เลือก <b>Start in test mode</b>)<br>
+        3) ไปที่ Project settings (⚙️) → เลื่อนหา "Your apps" → กดไอคอน <b>Web (&lt;/&gt;)</b> → ตั้งชื่อ → จะได้โค้ด <code>firebaseConfig</code><br>
+        4) คัดลอกเฉพาะส่วนในวงเล็บปีกกา <code>{ apiKey: "...", ... }</code> มาวางด้านล่าง
+      </div>
+      <div class="field"><label>วาง Firebase Config (JSON)</label>
+        <textarea id="s_fbcfg" rows="7" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "yourproject.firebaseapp.com",
+  "projectId": "yourproject",
+  "storageBucket": "yourproject.appspot.com",
+  "messagingSenderId": "123...",
+  "appId": "1:123...:web:abc..."
+}'></textarea></div>
+      <button class="btn" onclick="saveCloudConfig()">เชื่อมต่อ Cloud</button>
+      <button class="btn alt" onclick="disconnectCloud()">ยกเลิกการเชื่อมต่อ</button>
+      <div id="cloud_msg" class="muted" style="margin-top:8px"></div>
+    </div>
+
+    <div class="panel" style="padding:24px;max-width:560px;margin-top:18px">
       <h3 style="font-size:16px;margin-bottom:6px">สำรอง / กู้คืนข้อมูล (Backup)</h3>
-      <p class="muted" style="margin-bottom:14px">เดโมนี้เก็บข้อมูลในหน้าเว็บ — ใช้ปุ่มนี้ดาวน์โหลดทุกอย่าง (สินค้า ออร์เดอร์ Ads เมนู) เป็นไฟล์ แล้วนำกลับเข้ามาในครั้งถัดไป</p>
+      <p class="muted" style="margin-bottom:14px">ดาวน์โหลดข้อมูลทั้งหมด (สินค้า ออร์เดอร์ Ads เมนู) เป็นไฟล์ แล้วนำกลับเข้ามาภายหลังได้</p>
       <button class="btn alt" onclick="backupExport()">⬇ ดาวน์โหลดสำรอง (JSON)</button>
       <label class="btn alt" style="cursor:pointer">⬆ นำเข้าไฟล์สำรอง<input type="file" accept=".json" style="display:none" onchange="backupImport(this)"></label>
       <button class="btn danger" onclick="resetData()" style="margin-left:6px">ล้างข้อมูลทั้งหมด</button>
-      <div class="hint" style="margin-top:12px">ข้อมูลถูก<b>บันทึกอัตโนมัติ</b>ในเบราว์เซอร์นี้ (รอดการรีเฟรช/ปิดเปิดใหม่) · ใช้ "ดาวน์โหลดสำรอง" เพื่อย้ายข้อมูลไปเครื่องอื่น</div>
+      <div class="hint" style="margin-top:12px">ถ้าไม่ได้เปิด Cloud Sync ข้อมูลจะ<b>บันทึกเฉพาะในเบราว์เซอร์เครื่องนี้</b> (ไม่ซิงก์ข้ามเครื่อง)</div>
     </div>`;
-  previewFb(); previewLine();
+  previewFb(); previewLine(); renderCloudStatus();
+}
+function renderCloudStatus(){
+  const el=$('#cloudStatus'); if(!el) return;
+  const on = window.AISCloud && window.AISCloud.enabled;
+  el.innerHTML = on
+    ? `<span class="tag done">● เชื่อมต่อแล้ว — ข้อมูลซิงก์ข้ามเครื่อง</span>`
+    : `<span class="tag cancelled">○ ยังไม่เชื่อมต่อ — เก็บเฉพาะเครื่องนี้</span>`;
+  const cfg = window.AISCloud && window.AISCloud.getConfig();
+  if(cfg && $('#s_fbcfg') && !$('#s_fbcfg').value) $('#s_fbcfg').value = JSON.stringify(cfg,null,2);
+}
+function saveCloudConfig(){
+  const raw=$('#s_fbcfg').value.trim();
+  if(!raw){ $('#cloud_msg').textContent='กรุณาวาง Firebase config ก่อน'; return; }
+  let cfg;
+  try{
+    // tolerate JS-object style (unquoted keys) by trying JSON first, then a loose eval-free parse
+    cfg = JSON.parse(raw);
+  }catch{
+    try{ cfg = JSON.parse(raw.replace(/(\w+)\s*:/g,'"$1":').replace(/'/g,'"').replace(/,(\s*})/g,'$1')); }
+    catch{ $('#cloud_msg').innerHTML='<span style="color:var(--sale)">รูปแบบ config ไม่ถูกต้อง — วางทั้งก้อน { ... }</span>'; return; }
+  }
+  if(!cfg.apiKey||!cfg.projectId){ $('#cloud_msg').innerHTML='<span style="color:var(--sale)">config ต้องมี apiKey และ projectId</span>'; return; }
+  window.AISCloud.saveConfig(cfg);
+  $('#cloud_msg').textContent='บันทึกแล้ว กำลังโหลดใหม่เพื่อเชื่อมต่อ…';
+  setTimeout(()=>location.reload(),800);
+}
+function disconnectCloud(){
+  if(!confirm('ยกเลิกการเชื่อมต่อ Cloud? ข้อมูลจะกลับไปเก็บเฉพาะเครื่องนี้')) return;
+  window.AISCloud.clearConfig();
+  setTimeout(()=>location.reload(),300);
 }
 function previewLine(){
   const el=$('#linePreview'); if(!el) return;
@@ -990,8 +1150,13 @@ function previewLine(){
 }
 function lineUrlFrom(v){
   let s=String(v||'').trim(); if(!s) return null;
+  // ถ้าเป็น URL เต็ม (lin.ee, line.me, https://) ใช้ตรงๆ ไม่แปลง
   if(/^https?:\/\//i.test(s)) return s;
-  s=s.replace(/^@/,''); return s?`https://line.me/R/ti/p/@${s}`:null;
+  // ถ้าเป็น lin.ee โดยไม่มี https://
+  if(/^lin\.ee\//i.test(s)) return 'https://'+s;
+  // ถ้าเป็น @id หรือ id เปล่า
+  s=s.replace(/^@/,'');
+  return s ? `https://line.me/R/ti/p/@${s}` : null;
 }
 function saveContact(){
   SETTINGS.fb_username=normalizeFb($('#s_fb').value);
@@ -1046,12 +1211,38 @@ function snapshot(){ return {SETTINGS,CATS,PRODUCTS,ORDERS,nextProductId,nextCat
 function persist(){
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(()=>{
-    if(!_db) return;
-    try{
-      const tx=_db.transaction('kv','readwrite');
-      tx.objectStore('kv').put(JSON.stringify(snapshot()),'state');
-    }catch(e){ console.warn('persist failed',e); }
+    const snap=snapshot();
+    // local fallback (offline / no cloud)
+    if(_db){
+      try{ _db.transaction('kv','readwrite').objectStore('kv').put(JSON.stringify(snap),'state'); }
+      catch(e){ console.warn('local persist failed',e); }
+    }
+    // central cloud (syncs across devices)
+    if(window.AISCloud && window.AISCloud.enabled){
+      window.AISCloud.save(snap);
+    }
   },250);
+}
+function applyState(d){
+  if(!d) return;
+  if(d.SETTINGS)Object.assign(SETTINGS,d.SETTINGS);
+  // แก้ค่า LINE OA เก่าที่ผิด
+  if(SETTINGS.line_oa==='@aisshop' || SETTINGS.line_oa==='') SETTINGS.line_oa='@706dgnuq';
+  if(d.CATS)CATS=d.CATS; if(d.PRODUCTS)PRODUCTS=d.PRODUCTS; if(d.ORDERS)ORDERS=d.ORDERS;
+  if(d.nextProductId)nextProductId=d.nextProductId;
+  if(d.nextCatId)nextCatId=d.nextCatId;
+  if(d.nextOrderSeq)nextOrderSeq=d.nextOrderSeq;
+}
+// Called when cloud pushes a fresh copy (another device changed data)
+function applyRemoteState(d){
+  applyState(d);
+  // refresh whatever view is currently visible
+  const storeVisible = !$('#storeView').classList.contains('hidden');
+  if(storeVisible){ applyTheme(); renderCats(); renderGrid(); updateCart(); }
+  else {
+    const active=document.querySelector('.side nav button.active');
+    if(active) tab(active.dataset.tab);
+  }
 }
 function loadState(){
   return new Promise((res)=>{
@@ -1061,15 +1252,7 @@ function loadState(){
       const rq=tx.objectStore('kv').get('state');
       rq.onsuccess=()=>{
         if(!rq.result) return res(false);
-        try{
-          const d=JSON.parse(rq.result);
-          if(d.SETTINGS)Object.assign(SETTINGS,d.SETTINGS);
-          if(d.CATS)CATS=d.CATS; if(d.PRODUCTS)PRODUCTS=d.PRODUCTS; if(d.ORDERS)ORDERS=d.ORDERS;
-          if(d.nextProductId)nextProductId=d.nextProductId;
-          if(d.nextCatId)nextCatId=d.nextCatId;
-          if(d.nextOrderSeq)nextOrderSeq=d.nextOrderSeq;
-          res(true);
-        }catch{ res(false); }
+        try{ applyState(JSON.parse(rq.result)); res(true); }catch{ res(false); }
       };
       rq.onerror=()=>res(false);
     }catch{ res(false); }
@@ -1082,11 +1265,14 @@ async function resetData(){
     try{
       const tx=_db.transaction('kv','readwrite');
       tx.objectStore('kv').delete('state');
-      tx.oncomplete=()=>res();
-      tx.onerror=()=>res();
-      tx.onabort=()=>res();
+      tx.oncomplete=()=>res(); tx.onerror=()=>res(); tx.onabort=()=>res();
     }catch{ res(); }
   });
+  // also clear cloud copy so it doesn't re-sync old data back
+  if(window.AISCloud && window.AISCloud.enabled){
+    try{ await window.AISCloud.save({SETTINGS:undefined}); }catch{}
+    // write defaults snapshot after reload instead; simplest: blank the doc
+  }
   location.reload();
 }
 
@@ -1108,11 +1294,75 @@ $('#modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal
 /* ----- init ----- */
 function boot(){
   applyTheme();renderCats();renderGrid();updateCart();
+  initVisitorCounter();
   function routeHash(){ if((location.hash||'').toLowerCase()==='#admin'){ enterAdmin(); } }
   window.addEventListener('hashchange',routeHash);
   routeHash();
+  try{
+    if(sessionStorage.getItem('ais_admin_in')==='1'){
+      const av=$('#adminView');
+      if((location.hash||'').toLowerCase()!=='#admin'){ /* stay on store unless they were in admin */ }
+    }
+  }catch{}
 }
-openDB().then(loadState).then(()=>boot()).catch(()=>boot()); // if DB fails, still run (memory-only)
+
+/* ── visitor counter ── */
+function initVisitorCounter(){
+  const countEl=$('#visitorCount');
+  if(!countEl) return;
+
+  if(window.AISCloud && window.AISCloud.enabled && window.AISCloud._fs){
+    // Firebase: real cross-device visitor counter
+    const fs=window.AISCloud._fs, db=window.AISCloud._db;
+    const vcRef=fs.doc(db,'stores','visitors');
+    fs.runTransaction(db,async tx=>{
+      const snap=await tx.get(vcRef);
+      const prev=snap.exists()?(snap.data().count||0):0;
+      tx.set(vcRef,{count:prev+1});
+      return prev+1;
+    }).then(n=>{ countEl.textContent=Number(n).toLocaleString('th-TH')+' ครั้ง'; })
+      .catch(()=>{ badge.style.display='none'; });
+    fs.onSnapshot(vcRef,snap=>{
+      if(snap.exists()) countEl.textContent=Number(snap.data().count||0).toLocaleString('th-TH')+' ครั้ง';
+    });
+  } else {
+    // Local fallback: count in this browser only
+    let cnt=0;
+    try{ cnt=(parseInt(localStorage.getItem('ais_visits')||'0')||0)+1; localStorage.setItem('ais_visits',cnt); }catch{}
+    countEl.textContent=Number(cnt).toLocaleString('th-TH')+' ครั้ง';
+  }
+}
+
+async function startup(){
+  // 1) open local DB (fallback / offline cache)
+  try{ await openDB(); }catch{}
+  // 2) try cloud
+  let cloudOk=false;
+  try{ cloudOk = await (window.AISCloudReady || Promise.resolve(false)); }catch{ cloudOk=false; }
+
+  if(cloudOk && window.AISCloud.enabled){
+    // load central data; if cloud empty, seed it with whatever we have locally (or defaults)
+    const remote = await window.AISCloud.loadOnce();
+    if(remote){ applyState(remote); }
+    else {
+      await loadState();              // use local if any
+      window.AISCloud.save(snapshot()); // seed cloud
+    }
+    // realtime: any device's change updates everyone
+    window.AISCloud.subscribe(applyRemoteState);
+    cloudBadge(true);
+  } else {
+    // local-only mode
+    await loadState();
+    cloudBadge(false);
+  }
+  boot();
+}
+function cloudBadge(on){
+  // small indicator the admin can see in settings (set a flag)
+  window._cloudOn = on;
+}
+startup();
 </script>
 </body>
 </html>
