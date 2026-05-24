@@ -1459,6 +1459,7 @@ function applyState(d){
   const savedAds = JSON.parse(JSON.stringify(SETTINGS.ads||[])); // เก็บ ads ไว้ก่อน
   if(d.SETTINGS)Object.assign(SETTINGS,d.SETTINGS);
   SETTINGS.ads = savedAds; // คืน ads เสมอ ไม่ใช้ค่าจาก Firebase
+renderHero();
   if(SETTINGS.line_oa==='@aisshop' || SETTINGS.line_oa==='') SETTINGS.line_oa='@706dgnuq';
   if(d.CATS)CATS=d.CATS; if(d.PRODUCTS)PRODUCTS=d.PRODUCTS; if(d.ORDERS)ORDERS=d.ORDERS;
   if(d.nextProductId)nextProductId=d.nextProductId;
