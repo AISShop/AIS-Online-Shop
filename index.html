@@ -468,7 +468,9 @@ window.AISCloudReady = window.AISCloud.connect();
       <div style="padding:10px 8px;margin-top:8px;border-top:1px solid rgba(255,255,255,.1)">
         <div style="font-size:11px;color:#8ab49a;margin-bottom:6px;padding-left:6px">สาขาที่ใช้งาน</div>
         <select id="branchSelect" onchange="setBranch(this.value)" style="width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:8px 10px;border-radius:8px;font-size:13px;font-family:inherit">
-          ${Object.keys(BRANCHES).map(k=>`<option value="${k}" ${k===_branchId?'selected':''}>${BRANCHES[k].name}</option>`).join('')}
+         <option value="phuket">AIS Shop Central Phuket</option>
+          <option value="hatyai">AIS Shop Central Hat Yai</option>
+          <option value="samui">AIS Shop Samui</option>
         </select>
       </div>
       <div style="position:absolute;bottom:20px;left:16px;right:16px;display:flex;flex-direction:column;gap:8px">
@@ -1771,7 +1773,7 @@ const L = {
     cart_title:'ตะกร้าสินค้า', cart_empty:'ตะกร้าว่างเปล่า',
     checkout:'ดำเนินการสั่งซื้อ',
     order_title:'ข้อมูลผู้สั่งซื้อ',
-    back:__('back'),
+    back:'‹ กลับไปที่ตะกร้า',
     name_l:'ชื่อ – สกุล *', name_p:'เช่น สมชาย ใจดี',
     phone_l:'เบอร์ติดต่อ *', phone_p:'08X-XXX-XXXX',
     note_l:'หมายเหตุ (ถ้ามี)', note_p:'ที่อยู่จัดส่ง / รายละเอียดเพิ่มเติม',
