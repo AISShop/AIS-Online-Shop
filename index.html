@@ -1976,10 +1976,22 @@ function setBranch(id){
   _branch = BRANCHES[id];
   try{ localStorage.setItem('ais_branch', id); }catch{}
   applyBranchConfig();
-  applyTheme(); renderCats(); renderGrid();
   const bl=document.getElementById('branchLabel');
   if(bl) bl.textContent=_branch.location||'';
-  persist();
+  // reconnect Firebase ด้วย branch ใหม่
+  if(window.AISCloud && window.AISCloud._db){
+    window.AISCloud._docRef = window.AISCloud._db.collection('branches').doc(_branchId).collection('stores').doc('main');
+    window.AISCloud._visRef = window.AISCloud._db.collection('branches').doc(_branchId).collection('visitors').doc('count');
+    // โหลดข้อมูลสาขาใหม่
+    window.AISCloud.loadOnce().then(remote=>{
+      if(remote) applyState(remote);
+      else { PRODUCTS=[]; ORDERS=[]; CATS=[]; }
+      applyTheme(); renderCats(); renderGrid();
+      window.AISCloud.subscribe(applyRemoteState);
+    });
+  } else {
+    applyTheme(); renderCats(); renderGrid();
+  }
 }
 
 // Apply branch config ไปที่ SETTINGS
