@@ -679,7 +679,7 @@ function slidePrev(){_setSlide(_slideIdx-1);clearInterval(_slideTimer);_slideTim
 function slideGo(i){_setSlide(i);clearInterval(_slideTimer);_slideTimer=setInterval(slideNext,4500);}
 let activeCat='all';
 function renderCats(){
-  let h=`<div class="chip ${activeCat==='all'?'active':''}" onclick="setCat('all')">${t('all')}</div>`;
+  let h=`<div class="chip ${activeCat==='all'?'active':''}" onclick="setCat('all')">${__('all')}</div>`;
   CATS.forEach(c=>h+=`<div class="chip ${activeCat==c.id?'active':''}" onclick="setCat(${c.id})">${esc(c.name)}</div>`);
   $('#cats').innerHTML=h;
 }
@@ -698,7 +698,7 @@ function renderGrid(){
   const list=PRODUCTS.filter(p=>p.active&&(activeCat==='all'||p.category_id==activeCat))
                      .sort((a,b)=>a.sort-b.sort);
   const g=$('#grid');
-  if(!list.length){g.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#888;padding:40px">'+t('no_product')+'</p>';return;}
+  if(!list.length){g.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#888;padding:40px">'+__('no_product')+'</p>';return;}
   g.innerHTML=list.map(p=>{
     const hasSale=p.sale&&p.sale<p.price&&!isDiscExpired(p);
     const show=hasSale?p.sale:p.price;
